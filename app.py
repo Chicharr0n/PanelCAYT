@@ -9,6 +9,34 @@ from utils import format_caratula, create_expediente_link, generate_report
 init_db()
 st.set_page_config(layout="wide", page_title="Gestor de Expedientes CAYT")
 
+
+# --- NUEVA FUNCIÓN DE LOGIN ---
+def check_password():
+    """Muestra un formulario de login y retorna True si la contraseña es correcta."""
+    if st.session_state.get("authenticated", False):
+        return True
+
+    st.title("Acceso Protegido")
+    st.write("Por favor, ingrese la contraseña para continuar.")
+
+    with st.form("login_form"):
+        password = st.text_input("Contraseña", type="password")
+        submitted = st.form_submit_button("Ingresar")
+
+        if submitted:
+            # Compara la contraseña ingresada con la guardada en los secretos
+            if password == st.secrets.get("APP_PASSWORD"):
+                st.session_state["authenticated"] = True
+                st.rerun()  # Recarga la app para mostrar el contenido principal
+            else:
+                st.error("La contraseña es incorrecta.")
+    return False
+
+# --- EJECUCIÓN DEL LOGIN AL INICIO ---
+if not check_password():
+    st.stop()  # Si no está autenticado, detiene la ejecución del resto de la app
+
+
 # --- BARRA LATERAL ---
 with st.sidebar:
     st.title("⚖️ Gestor CAYT")
@@ -31,7 +59,7 @@ with st.sidebar:
 # --- CARGA DE DATOS ---
 expedientes_df, tareas_df, notas_df, movimientos_df = db_manager.get_all_data()
 
-# --- PANEL DE CONTENIDO PRINCIPAL ---
+# --- PANEL DE CONTENIDO PRINCIPAL (solo se muestra si el login es exitoso) ---
 if opcion_menu == "📈 Dashboard":
     st.title("📈 Panel de Control")
     if expedientes_df.empty:
@@ -73,17 +101,11 @@ elif opcion_menu == "🗂️ Mis Expedientes":
         exp_numero = exp['numero']
         badge_count = len(tareas_df[(tareas_df['expediente_numero'] == exp_numero) & (~tareas_df['completada'])])
         badge = f" `{badge_count} Tareas`" if badge_count > 0 else ""
-
-        # --- MEJORA AQUÍ: Lógica para colorear la carátula ---
         caratula_display = exp['caratula']
         cautelar_status = str(exp.get('medida_cautelar_status', '')).lower()
-        
         if 'concedida' in cautelar_status or 'otorgada' in cautelar_status:
             caratula_display = f":yellow[{exp['caratula']}]"
-        
         expander_title = f"**{exp_numero}** - {caratula_display}{badge}"
-        # --- FIN DE LA MEJORA ---
-
         with st.expander(expander_title):
             tab_ficha, tab_historial, tab_tareas, tab_notas = st.tabs(["Ficha Técnica", "Historial de Movimientos", "Tareas", "Notas"])
             with tab_ficha:
@@ -106,89 +128,4 @@ elif opcion_menu == "🗂️ Mis Expedientes":
                     fecha_mov = c1.date_input("Fecha", key=f"fecha_mov_{exp_numero}")
                     desc_mov = c2.text_input("Descripción", key=f"desc_mov_{exp_numero}")
                     if st.form_submit_button("Guardar Movimiento"):
-                        db_manager.add_item('movimientos', {"expediente_numero": exp_numero, "fecha": fecha_mov, "descripcion": desc_mov})
-                        st.rerun()
-            with tab_tareas:
-                tareas_exp = tareas_df[tareas_df['expediente_numero'] == exp_numero]
-                for _, t in tareas_exp.iterrows():
-                    estado_actual = bool(t['completada'])
-                    nuevo_estado = st.checkbox(f"{t['descripcion']} (Vence: {t['fecha_vencimiento'].strftime('%d/%m/%Y')})", value=estado_actual, key=f"chk_{t['id']}")
-                    if nuevo_estado != estado_actual:
-                        db_manager.update_tarea_status(t['id'], nuevo_estado)
-                        st.rerun()
-                with st.form(key=f"form_tarea_{exp_numero}", clear_on_submit=True):
-                    st.write("**Añadir Tarea:**")
-                    nueva_desc = st.text_input("Descripción")
-                    c1, c2 = st.columns(2)
-                    nueva_fecha = c1.date_input("Vencimiento", min_value=date.today())
-                    nueva_prioridad = c2.selectbox("Prioridad", ["Baja", "Media", "Alta"])
-                    if st.form_submit_button("Guardar Tarea"):
-                        db_manager.add_item('tareas', {"expediente_numero": exp_numero, "descripcion": nueva_desc, "fecha_vencimiento": nueva_fecha, "prioridad": nueva_prioridad.lower()})
-                        st.rerun()
-            with tab_notas:
-                notas_exp = notas_df[notas_df['expediente_numero'] == exp_numero]
-                for _, n in notas_exp.iterrows(): st.markdown(f"> {n['contenido']}\n\n_{n['fecha_creacion'].strftime('%d/%m/%Y %H:%M')}_")
-                with st.form(key=f"form_nota_{exp_numero}", clear_on_submit=True):
-                    nuevo_contenido = st.text_area("Nueva Nota:")
-                    if st.form_submit_button("Guardar Nota"):
-                        db_manager.add_item('notas', {"expediente_numero": exp_numero, "contenido": nuevo_contenido, "fecha_creacion": datetime.now()})
-                        st.rerun()
-
-elif opcion_menu == "🗓️ Agenda":
-    st.title("🗓️ Agenda de Vencimientos")
-    tareas_pendientes = tareas_df[~tareas_df['completada']].sort_values(by='fecha_vencimiento')
-    if tareas_pendientes.empty: st.success("¡No hay tareas pendientes! 🎉")
-    else:
-        for _, t in tareas_pendientes.iterrows():
-            dias_restantes = (t['fecha_vencimiento'] - date.today()).days
-            color = "red" if dias_restantes < 3 else "orange" if dias_restantes < 7 else "blue"
-            with st.container(border=True):
-                st.markdown(f"##### :{color}[{t['descripcion']}]")
-                exp_asociado_df = expedientes_df[expedientes_df['numero'] == t['expediente_numero']]
-                if not exp_asociado_df.empty:
-                    exp_asociado = exp_asociado_df.iloc[0]
-                    st.markdown(f"**Expediente:** {format_caratula(exp_asociado['caratula'])}")
-                else:
-                    st.markdown(f"**Expediente:** {t['expediente_numero']}")
-                st.markdown(f"**Vence:** {t['fecha_vencimiento'].strftime('%d/%m/%Y')} (**{dias_restantes} días restantes**)")
-
-elif opcion_menu == "📝 Notas":
-    st.title("📝 Resumen de Notas")
-    if notas_df.empty: st.info("Aún no has añadido ninguna nota.")
-    else:
-        notas_con_caratula = pd.merge(notas_df.sort_values(by='fecha_creacion', ascending=False), expedientes_df[['numero', 'caratula']], left_on='expediente_numero', right_on='numero', how='left')
-        for _, n in notas_con_caratula.iterrows():
-            with st.container(border=True):
-                st.markdown(f"**Nota en:** {format_caratula(n.get('caratula', n['expediente_numero']))}")
-                st.write(n['contenido'])
-                st.caption(f"Añadido el {n['fecha_creacion'].strftime('%d/%m/%Y %H:%M')}")
-
-elif opcion_menu == "🔍 Búsqueda":
-    st.title("🔍 Búsqueda General en Portal CAYT")
-    if 'driver' not in st.session_state or st.session_state.driver is None:
-        st.warning("⚠️ Para buscar, primero debe 'Iniciar Sesión y Sincronizar'.")
-    else:
-        query = st.text_input("Ingrese su búsqueda", key="search_query")
-        if st.button("Buscar en Portal"):
-            with st.spinner(f"Buscando '{query}'..."):
-                search_results = Scraper().search_on_portal(query)
-            if not search_results.empty:
-                st.dataframe(search_results, column_config={"Enlace": st.column_config.LinkColumn("Abrir", display_text="↗️")}, hide_index=True)
-            else:
-                st.info("No se encontraron resultados.")
-
-elif opcion_menu == "📄 Reportes":
-    st.title("📄 Generador de Informes")
-    if not expedientes_df.empty:
-        options = st.multiselect(
-            "Seleccione los expedientes para incluir en el reporte:",
-            options=expedientes_df['numero'],
-            format_func=lambda x: format_caratula(expedientes_df[expedientes_df['numero'] == x].iloc[0]['caratula'])
-        )
-        if st.button("Generar Reporte"):
-            if options:
-                reporte = generate_report(expedientes_df, tareas_df, notas_df, movimientos_df, options)
-                st.markdown(reporte)
-                st.download_button("Descargar Reporte (.md)", reporte, file_name="Reporte_Expedientes.md")
-            else:
-                st.warning("Debe seleccionar al menos un expediente.")
+                        db_manager.add_item('movimientos', {"expediente_numero
