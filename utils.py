@@ -1,8 +1,18 @@
 import re
 from urllib.parse import quote
 import pandas as pd
+import json
 
 BASE_URL = "https://eje.juscaba.gob.ar"
+
+# --- NUEVA FUNCIÓN ---
+def load_juzgados_data():
+    """Carga los datos de los juzgados desde el archivo JSON."""
+    try:
+        with open('data/juzgados_data.json', 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return []
 
 def format_caratula(caratula):
     if not isinstance(caratula, str): return "Carátula inválida"
@@ -25,10 +35,9 @@ def generate_report(expedientes_df, tareas_df, notas_df, movimientos_df, selecte
         exp = expedientes_df[expedientes_df['numero'] == numero].iloc[0]
         report_md += f"---\n##  expediente: {exp['caratula']}\n"
         report_md += f"**Número:** {exp['numero']}  \n"
-        report_md += f"**Juzgado:** {exp.get('juzgado', 'No especificado')}  \n"
+        report_md += f"**Juzgado:** {exp.get('juzgado_nombre', 'No especificado')} - {exp.get('secretaria_nombre', '')}  \n"
         report_md += f"**Estado Cautelar:** {exp.get('medida_cautelar_status', 'No especificado')}  \n\n"
 
-        # Tareas Pendientes
         report_md += "### Tareas Pendientes\n"
         tareas_exp = tareas_df[(tareas_df['expediente_numero'] == numero) & (~tareas_df['completada'])]
         if not tareas_exp.empty:
@@ -38,7 +47,6 @@ def generate_report(expedientes_df, tareas_df, notas_df, movimientos_df, selecte
             report_md += "_No hay tareas pendientes._\n"
         report_md += "\n"
 
-        # Historial de Movimientos
         report_md += "### Historial de Movimientos\n"
         movimientos_exp = movimientos_df[movimientos_df['expediente_numero'] == numero].sort_values(by='fecha', ascending=False)
         if not movimientos_exp.empty:
@@ -47,5 +55,4 @@ def generate_report(expedientes_df, tareas_df, notas_df, movimientos_df, selecte
         else:
             report_md += "_No hay movimientos registrados._\n"
         report_md += "\n"
-
     return report_md
