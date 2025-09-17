@@ -1,0 +1,170 @@
+[
+  {
+    "nombre": "Juzgado CAyT N° 1", "juez": "Dra. TESONE, Romina", "direccion": "Av. de Mayo 654 - piso 7 contrafrente", "email": "juzcayt1@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 1", "secretario": "Dr. APOSTOLIDIS, Federico Matías (Interino)"},
+      {"nombre": "Secretaría 2", "secretario": "Dr. CALDANO, Leandro Javier (Interino)"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 2", "juez": "Dr. GALLARDO, Roberto Andrés", "direccion": "Av. de Mayo 654 - piso 10 contrafrente", "email": "rgallardo@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 3", "secretario": "Dr. NUÑEZ, Juan Manuel"},
+      {"nombre": "Secretaría 4", "secretario": "Dra. CAMPOS, Beatriz Margarita Enriqueta"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 3", "juez": "Dr. Albornoz, Juan José", "direccion": "Av. De Mayo 654 - piso 9 frente", "email": "juzcayt3@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 5", "secretario": "Dra. TESOURO, María Laura"},
+      {"nombre": "Secretaría 6", "secretario": "Dra. MORTIER, Natalia Victoria"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 4", "juez": "Dra. LIBERATORI, Elena", "direccion": "Av. De Mayo 654 - piso 9 contrafrente", "email": "juzcayt4@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 7", "secretario": "Dra. VILLARINO, Noelia"},
+      {"nombre": "Secretaría 8", "secretario": "Dr. RODRÍGUEZ GAUNA, Germán"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 5", "juez": "Dr. CONVERSET, Martín", "direccion": "Av. De Mayo 654 - piso 8 contrafrente", "email": "juzcayt5@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 9", "secretario": "Dra. ALVAREZ FERNANDEZ, Constanza Florentina (Interina)"},
+      {"nombre": "Secretaría 10", "secretario": "Dra. FIOCCA SOLIMEI, Analía"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 6", "juez": "Dra. LÓPEZ VERGARA, Patricia", "direccion": "Av. De Mayo 654 - piso 10 frente", "email": "juzcayt6@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 11", "secretario": "Dra. SILVA GARRETON, Eugenia Victoria (Interina)"},
+      {"nombre": "Secretaría 12", "secretario": "Dra. BARREIRO, Laura"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 7", "juez": "Dra. LAGO, Lidia", "direccion": "Av. Roque Sáenz Peña 636 - piso 2 frente", "email": "juzcayt7@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 13", "secretario": "Dr. VILLEGAS, Martín Ricardo"},
+      {"nombre": "Secretaría 14", "secretario": "Dr. BORTAYRO, Ernesto Fidel"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 8", "juez": "Dr. OTHEGUY, Osvaldo Oscar", "direccion": "Av. Roque Sáenz Peña 636 - piso 3 frente", "email": "juzcayt8@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 15", "secretario": "Dr. SÁNCHEZ, Fabio Félix"},
+      {"nombre": "Secretaría 16", "secretario": "Dr. FIGUEIRA MARKULIN, Leandro Manuel"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 9", "juez": "Dra. DANAS, Andrea", "direccion": "Av. Roque Sáenz Peña 636 - piso 1 frente", "email": "juzcayt9@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 17", "secretario": "Dr. LALO COHENCA, Adolfo Leandro"},
+      {"nombre": "Secretaría 18", "secretario": "Dra. IZURIETA Y SEA DE MESTAS NÚÑEZ, María José"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 10", "juez": "Dr. AMMIRATO, Aurelio", "direccion": "Av. Roque Sáenz Peña 636 - piso 4 frente", "email": "megonzalez@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 19", "secretario": "Dr. TEMPONI, Pablo"},
+      {"nombre": "Secretaría 20", "secretario": "Dra. FRANCESCHI, Verónica"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 11", "juez": "Dr. MARCONI, Gonzalo Ignacio", "direccion": "N/A", "email": "juzcayt11@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 21", "secretario": "Dr. BIANCHI, Arturo"},
+      {"nombre": "Secretaría 22", "secretario": "Dr. BERARDINELLI, Ignacio"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 12", "juez": "Dra. PETRELLA, Alejandra", "direccion": "Av. Roque Sáenz Peña 636 - piso 5 frente", "email": "juzcayt12@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 23", "secretario": "Dra. JUANATEY, María Gabriela"},
+      {"nombre": "Secretaría 24", "secretario": "Dr. BOMAGGIO, Sebastián"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 13", "juez": "Dr. SCHEIBLER, Guillermo Martín", "direccion": "Av. De Mayo 654 - piso 7 frente", "email": "juzcayt13@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 25", "secretario": "Dra. DELFIN, Valeria Astrid (Interina)"},
+      {"nombre": "Secretaría 26", "secretario": "Dra. BRUNO, Milagros"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 14", "juez": "Dra. TANNO, Natalia", "direccion": "Av. De Mayo 654 - piso 8º Frente", "email": "juzcayt14@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 27", "secretario": "Dra. ORTIZ LOIZAGA, María Agustina"},
+      {"nombre": "Secretaría 28", "secretario": "Dra. TARAMELLI, Eleonora"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 15", "juez": "Dr. TRIONFETTI, Víctor R.", "direccion": "Av. De Mayo 654 - piso 3 frente", "email": "juz15sec29@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 29", "secretario": "Dr. SOMOZA, Hernán Pablo"},
+      {"nombre": "Secretaría 30", "secretario": "Dr. ROTELLE, Juan Cruz"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 16", "juez": "Dr. FURCHI, Martín", "direccion": "Tacuarí 124 - piso 2 'A'", "email": "juzcayt16@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 31", "secretario": "Dr. BORMIOLI, Matías"},
+      {"nombre": "Secretaría 32", "secretario": "Dra. ROSENBAUM, Elisa (Interina)"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 17", "juez": "Dr. SEGÓN, Marcelo", "direccion": "Tacuarí 124 - piso 2 'B'", "email": "Itorres@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 33", "secretario": "Dr. SCASSO, Juan Esteban"},
+      {"nombre": "Secretaría 34", "secretario": "Dr. LUCCHINI, Federico Guillermo"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 18", "juez": "Dra. VILLASUR GARCÍA, María Alejandra", "direccion": "Tacuarí 124 - piso 3 'B'", "email": "N/A",
+    "secretarias": [
+      {"nombre": "Secretaría 35", "secretario": "Dra. BIANCHI, María Eugenia"},
+      {"nombre": "Secretaría 36", "secretario": "Dra. LÓPEZ MALDONADO, Mónica"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 19", "juez": "Dr. CONVERSET, Martín (Subroga)", "direccion": "Av. Roque Sáenz Peña 636 - piso 3 y 4 contrafrente", "email": "Juzcayt19@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 37", "secretario": "Dra. LENZI, María Gisela"},
+      {"nombre": "Secretaría 38", "secretario": "Dra. DOMESI, Claudia Mariana (Interina)"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 20", "juez": "Dra. MÓLICA LOURIDO, Cecilia", "direccion": "Av. Roque Sáenz Peña 636 - piso 7 frente", "email": "juzcayt20secprivada@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 39", "secretario": "Dra. SALMÚN FEIJÓO, Samantha"},
+      {"nombre": "Secretaría 40", "secretario": "Dra. BERGARA, María Victoria (Interina)"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 21", "juez": "Dra. LARREA, María Soledad", "direccion": "Av. Roque Sáenz Peña 636 - piso 5 contrafrente", "email": "juzcayt21@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 41", "secretario": "Dr. NOVILLO, Juan Manuel"},
+      {"nombre": "Secretaría 42", "secretario": "Dr. NOGUERA, María"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 22", "juez": "Dra. CILURZO, María Rosa", "direccion": "Av. Roque Sáenz Peña 636 - piso 2 contrafrente", "email": "mcilurzo@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 43", "secretario": "Dr. AMESTOΥ, Gustavo"},
+      {"nombre": "Secretaría 44", "secretario": "Dr. KENNY, Vicente Alejandro (Interino)"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 23", "juez": "Dr. FERRER, Francisco Javier", "direccion": "Av. Roque Sáenz Peña 636 - piso 8 contrafrente", "email": "juzcayt23@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 45", "secretario": "Dra. BENITEZ, Julieta Vanina"},
+      {"nombre": "Secretaría 46", "secretario": "Dra. MOREL, Gabriela"}
+    ]
+  },
+  {
+    "nombre": "Juzgado CAyT N° 24", "juez": "Dr. REYNOSO, Darío", "direccion": "Av. Roque Sáenz Peña 636 - piso 8 frente", "email": "dreynoso@jusbaires.gob.ar",
+    "secretarias": [
+      {"nombre": "Secretaría 47", "secretario": "Dr. DI BONA, Javier"},
+      {"nombre": "Secretaría 48", "secretario": "Dra. MAGDALENO, Stella Maris"}
+    ]
+  }
+]
