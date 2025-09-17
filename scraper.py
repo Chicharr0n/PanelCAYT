@@ -23,7 +23,14 @@ BASE_URL = "https://eje.juscaba.gob.ar"
 class Scraper:
     def __init__(self):
         if 'driver' not in st.session_state or st.session_state.driver is None:
-            st.session_state.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+            options = webdriver.ChromeOptions()
+            options.add_argument("--headless")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--disable-gpu")
+            # En Streamlit Cloud, el path al chromedriver es fijo
+            service = Service(executable_path="/usr/bin/chromedriver")
+            st.session_state.driver = webdriver.Chrome(service=service, options=options)
         self.driver = st.session_state.driver
 
     def login_and_sync(self):
