@@ -8,12 +8,16 @@ engine = db.create_engine(f'sqlite:///{DB_FILE}')
 def init_db():
     metadata = db.MetaData()
     if not engine.dialect.has_table(engine.connect(), "expedientes"):
+        # --- TABLA MODIFICADA ---
         db.Table('expedientes', metadata,
             db.Column('numero', db.String, primary_key=True), db.Column('caratula', db.String),
-            db.Column('estado', db.String), db.Column('juzgado', db.String),
+            db.Column('estado', db.String), 
+            db.Column('juzgado_nombre', db.String), # NUEVO
+            db.Column('secretaria_nombre', db.String), # NUEVO
             db.Column('medida_cautelar_status', db.String),
             db.Column('ultima_novedad_portal', db.String), db.Column('fecha_novedad_portal', db.String)
         )
+        # (El resto de las tablas no cambian)
         db.Table('movimientos', metadata,
             db.Column('id', db.Integer, primary_key=True, autoincrement=True),
             db.Column('expediente_numero', db.String, db.ForeignKey('expedientes.numero')),
@@ -33,6 +37,7 @@ def init_db():
         metadata.create_all(engine)
 
 class DatabaseManager:
+    # (El código de la clase DatabaseManager necesita una pequeña modificación)
     def __init__(self, engine):
         self.engine = engine
 
@@ -49,6 +54,7 @@ class DatabaseManager:
             conn.commit()
 
     def get_all_data(self):
+        # (Sin cambios aquí)
         with self.engine.connect() as conn:
             expedientes = pd.read_sql_table('expedientes', conn, coerce_float=False)
             tareas = pd.read_sql_table('tareas', conn, coerce_float=False)
@@ -62,16 +68,17 @@ class DatabaseManager:
             notas['fecha_creacion'] = pd.to_datetime(notas['fecha_creacion'], errors='coerce')
         if not movimientos.empty:
             movimientos['fecha'] = pd.to_datetime(movimientos['fecha'], errors='coerce').dt.date
-            
         return expedientes, tareas, notas, movimientos
 
+    # --- MÉTODO MODIFICADO ---
     def update_ficha_expediente(self, numero, data):
         with self.engine.connect() as conn:
-            stmt = db.text("UPDATE expedientes SET juzgado=:j, medida_cautelar_status=:mc WHERE numero=:n")
-            conn.execute(stmt, {"j": data['juzgado'], "mc": data['medida_cautelar_status'], "n": numero})
+            stmt = db.text("UPDATE expedientes SET juzgado_nombre=:j, secretaria_nombre=:s, medida_cautelar_status=:mc WHERE numero=:n")
+            conn.execute(stmt, {"j": data['juzgado_nombre'], "s": data['secretaria_nombre'], "mc": data['medida_cautelar_status'], "n": numero})
             conn.commit()
 
     def add_item(self, table_name, data):
+        # (Sin cambios aquí)
         with self.engine.connect() as conn:
             table = db.Table(table_name, db.MetaData(), autoload_with=self.engine)
             stmt = db.insert(table).values(data)
@@ -79,10 +86,10 @@ class DatabaseManager:
             conn.commit()
 
     def update_tarea_status(self, tarea_id, completada):
+        # (Sin cambios aquí)
         with self.engine.connect() as conn:
             stmt = db.text("UPDATE tareas SET completada=:c WHERE id=:i")
             conn.execute(stmt, {"c": completada, "i": tarea_id})
             conn.commit()
 
-# Crear una instancia global para ser usada por la app
 db_manager = DatabaseManager(engine)
