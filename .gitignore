@@ -1,0 +1,12 @@
+# Archivo de credenciales
+.env
+
+# Base de datos local
+gestor_definitivo.db
+
+# Carpeta del entorno virtual
+venv/
+
+# Archivos de cache de Python
+__pycache__/
+*.pyc
