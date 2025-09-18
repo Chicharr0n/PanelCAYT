@@ -1,246 +1,97 @@
+# database.py - VERSIÓN FINAL CON CONEXIÓN A TURSO
 import streamlit as st
+import sqlalchemy as db
 import pandas as pd
-from datetime import datetime, date, timedelta
-from database import init_db, db_manager
-from scraper import Scraper
-from utils import format_caratula, generate_report, load_juzgados_data
-import time
+from datetime import datetime
 
-# --- INICIALIZACIÓN Y CONFIGURACIÓN ---
-init_db()
-st.set_page_config(layout="wide", page_title="Gestor de Expedientes CAYT", page_icon="⚖️")
+# --- LÓGICA DE CONEXIÓN ---
+# Intenta conectarse a Turso (para producción), si no, usa el archivo local (para desarrollo)
+try:
+    url = st.secrets["TURSO_DATABASE_URL"]
+    token = st.secrets["TURSO_AUTH_TOKEN"]
+    # La URL de conexión para Turso con SQLAlchemy es un poco diferente
+    conn_url = f"sqlite+{url}/?authToken={token}&secure=true"
+    engine = db.create_engine(conn_url, connect_args={'check_same_thread': False}, echo=False)
+    st.session_state['db_connection_type'] = "☁️ Turso Cloud"
+except Exception:
+    DB_FILE = "gestor_definitivo.db"
+    engine = db.create_engine(f'sqlite:///{DB_FILE}')
+    st.session_state['db_connection_type'] = "💾 Local"
 
-# --- LÓGICA DE LOGIN ---
-def check_password():
-    if st.session_state.get("authenticated", False):
-        return True
-    try:
-        password_guardada = st.secrets["APP_PASSWORD"]
-    except:
-        st.error("No se ha configurado una contraseña para la aplicación en los 'Secrets'.")
-        return False
-    
-    st.title("⚖️ Gestor de Expedientes CAYT")
-    st.write("Acceso Protegido")
-    with st.form("login_form"):
-        password = st.text_input("Contraseña", type="password")
-        submitted = st.form_submit_button("Ingresar")
-        if submitted:
-            if password == password_guardada:
-                st.session_state["authenticated"] = True
-                st.rerun()
-            else:
-                st.error("La contraseña es incorrecta.")
-    return False
+# (El resto del archivo no cambia, es compatible con ambas bases de datos)
+def init_db():
+    # ... (código de init_db sin cambios)
+    metadata = db.MetaData()
+    if not engine.dialect.has_table(engine.connect(), "expedientes"):
+        db.Table('expedientes', metadata,
+            db.Column('numero', db.String, primary_key=True), db.Column('caratula', db.String),
+            db.Column('estado', db.String), db.Column('juzgado_nombre', db.String), 
+            db.Column('secretaria_nombre', db.String), db.Column('medida_cautelar_status', db.String),
+            db.Column('observaciones', db.Text), db.Column('ultima_novedad_portal', db.String), 
+            db.Column('fecha_novedad_portal', db.String), db.Column('link_portal', db.String)
+        )
+        db.Table('movimientos', metadata,
+            db.Column('id', db.Integer, primary_key=True, autoincrement=True),
+            db.Column('expediente_numero', db.String, db.ForeignKey('expedientes.numero')),
+            db.Column('fecha', db.Date, nullable=False), db.Column('descripcion', db.String, nullable=False)
+        )
+        db.Table('tareas', metadata,
+            db.Column('id', db.Integer, primary_key=True, autoincrement=True),
+            db.Column('expediente_numero', db.String, db.ForeignKey('expedientes.numero')),
+            db.Column('descripcion', db.String, nullable=False), db.Column('fecha_vencimiento', db.Date),
+            db.Column('prioridad', db.String), db.Column('completada', db.Boolean, default=False)
+        )
+        db.Table('notas', metadata,
+            db.Column('id', db.Integer, primary_key=True, autoincrement=True),
+            db.Column('expediente_numero', db.String, db.ForeignKey('expedientes.numero')),
+            db.Column('contenido', db.Text, nullable=False), db.Column('fecha_creacion', db.DateTime, default=datetime.now)
+        )
+        metadata.create_all(engine)
 
-if not check_password():
-    st.stop()
-
-# --- CÓDIGO PRINCIPAL DE LA APP ---
-@st.cache_data(ttl=300)
-def load_data():
-    return db_manager.get_all_data()
-
-# --- BARRA LATERAL ---
-with st.sidebar:
-    st.title("⚖️ Gestor CAYT")
-    opcion_menu = st.radio("Navegación", ["📈 Dashboard", "🗂️ Mis Expedientes", "🗓️ Agenda", "📝 Notas", "🔍 Búsqueda", "📄 Reportes"], label_visibility="hidden")
-    st.markdown("---")
-    if st.button("🔄 Sincronizar con Portal"):
-        with st.spinner("Iniciando sesión y sincronizando..."):
-            scraper_instance = Scraper()
-            scraper_instance.login_and_sync()
-        st.success("¡Sincronización completa!")
-        st.cache_data.clear()
-        st.rerun()
-    if 'driver' in st.session_state and st.session_state.driver:
-        if st.button("❌ Cerrar Navegador"):
-            Scraper().close()
-            st.rerun()
-    st.markdown("---")
-    st.caption(f"Última sync: {st.session_state.get('last_sync', 'N/A')}")
-
-# --- CARGA DE DATOS ---
-juzgados_data = load_juzgados_data()
-expedientes_df, tareas_df, notas_df, movimientos_df = load_data()
-
-# --- PANEL DE CONTENIDO PRINCIPAL ---
-if opcion_menu == "📈 Dashboard":
-    st.title("📈 Panel de Control")
-    if expedientes_df.empty:
-        st.info("Aún no se han cargado expedientes. Use 'Sincronizar con Portal' para comenzar.")
-    else:
-        tareas_pendientes = tareas_df[~tareas_df['completada']]
-        vencen_7_dias = len(tareas_pendientes[tareas_pendientes['fecha_vencimiento'] <= (date.today() + timedelta(days=7))]) if not tareas_pendientes.empty else 0
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Expedientes Activos", len(expedientes_df))
-        col2.metric("Tareas Pendientes", len(tareas_pendientes))
-        col3.metric("Vencen en 7 días", vencen_7_dias)
-        st.markdown("---")
-        st.subheader("Últimos Movimientos y Notas")
-        col_mov, col_notas = st.columns(2)
-        with col_mov:
-            st.write("**Novedades Recientes del Portal**")
-            expedientes_df['fecha_novedad_dt'] = pd.to_datetime(expedientes_df['fecha_novedad_portal'], format='%d/%m/%Y', errors='coerce')
-            ultimos_movimientos = expedientes_df.sort_values(by='fecha_novedad_dt', ascending=False).head(5)
-            for _, exp in ultimos_movimientos.iterrows():
-                with st.container(border=True):
-                    link = exp.get('link_portal', '#')
-                    st.markdown(f"**<a href='{link}' target='_blank' style='text-decoration: none; color: inherit;'>{format_caratula(exp['caratula'])}</a>**", unsafe_allow_html=True)
-                    st.caption(f"{exp['ultima_novedad_portal']} ({exp['fecha_novedad_portal']})")
-        with col_notas:
-            st.write("**Últimas Notas Agregadas**")
-            if not notas_df.empty:
-                ultimas_notas = notas_df.sort_values(by='fecha_creacion', ascending=False).head(5)
-                notas_con_caratula = pd.merge(ultimas_notas, expedientes_df[['numero', 'caratula']], left_on='expediente_numero', right_on='numero', how='left').fillna({'caratula': 'N/A'})
-                for _, nota in notas_con_caratula.iterrows():
-                    with st.container(border=True):
-                        st.markdown(f"**Nota en:** {format_caratula(nota['caratula'])}")
-                        st.caption(f"{nota['contenido'][:100]}...")
-            else:
-                st.caption("No hay notas.")
-
-elif opcion_menu == "🗂️ Mis Expedientes":
-    st.title("🗂️ Mis Expedientes")
-    for _, exp in expedientes_df.iterrows():
-        exp_numero = exp['numero']
-        badge_count = len(tareas_df[(tareas_df['expediente_numero'] == exp_numero) & (~tareas_df['completada'])])
-        badge = f" `{badge_count} Tareas`" if badge_count > 0 else ""
-        
-        caratula_display = exp['caratula']
-        cautelar_status = str(exp.get('medida_cautelar_status', '')).upper()
-        if cautelar_status == 'CONCEDIDA' or cautelar_status == 'OTORGADA':
-            caratula_display = f":green[{exp['caratula']}]"
-        elif cautelar_status == 'PENDIENTE':
-            caratula_display = f":red[{exp['caratula']}]"
-        elif cautelar_status == 'PARCIALMENTE CONCEDIDA':
-            caratula_display = f":orange[{exp['caratula']}]"
-        
-        with st.expander(f"**{exp_numero}** - {caratula_display}{badge}"):
-            tab_ficha, tab_historial, tab_tareas, tab_notas = st.tabs(["Ficha Técnica", "Historial", "Tareas", "Notas"])
-            with tab_ficha:
-                with st.form(key=f"form_ficha_{exp_numero}"):
-                    opciones_cautelar = ["", "PENDIENTE", "CONCEDIDA", "PARCIALMENTE CONCEDIDA", "DENEGADA"]
-                    
-                    # --- LÓGICA CORREGIDA Y MEJORADA ---
-                    current_status = str(exp.get('medida_cautelar_status', '')).upper()
-                    # Mapear sinónimos a los valores de la lista
-                    if current_status == "OTORGADA":
-                        current_status = "CONCEDIDA"
-
-                    # Encontrar el índice de forma segura
-                    try:
-                        indice_cautelar = opciones_cautelar.index(current_status)
-                    except ValueError:
-                        indice_cautelar = 0 # Default a "" si no se encuentra
-                    
-                    st.selectbox("Juzgado", options=[""] + [j['nombre'] for j in juzgados_data], key=f"juzgado_{exp_numero}", index=0)
-                    st.selectbox("Secretaría", options=[""], key=f"secretaria_{exp_numero}", index=0)
-                    st.selectbox("Estado Medida Cautelar", options=opciones_cautelar, key=f"mc_{exp_numero}", index=indice_cautelar)
-                    st.text_area("Observaciones", value=exp.get('observaciones', ''), key=f"obs_{exp_numero}")
-
-                    if st.form_submit_button("Guardar Ficha"):
-                        db_manager.update_ficha_expediente(exp_numero, {
-                            'juzgado_nombre': st.session_state[f"juzgado_{exp_numero}"],
-                            'secretaria_nombre': st.session_state[f"secretaria_{exp_numero}"],
-                            'medida_cautelar_status': st.session_state[f"mc_{exp_numero}"],
-                            'observaciones': st.session_state[f"obs_{exp_numero}"]
-                        })
-                        st.success("Ficha actualizada.")
-                        st.cache_data.clear()
-                        st.rerun()
-            # (El resto de las tabs no tienen cambios)
-            with tab_historial:
-                movs = movimientos_df[movimientos_df['expediente_numero'] == exp_numero].sort_values(by='fecha', ascending=False)
-                for _, mov in movs.iterrows(): st.markdown(f"- **{mov['fecha'].strftime('%d/%m/%Y')}:** {mov['descripcion']}")
-                with st.form(key=f"form_mov_{exp_numero}", clear_on_submit=True):
-                    c1, c2 = st.columns([1, 3])
-                    fecha_mov = c1.date_input("Fecha")
-                    desc_mov = c2.text_input("Descripción")
-                    if st.form_submit_button("Guardar Movimiento"):
-                        db_manager.add_item('movimientos', {"expediente_numero": exp_numero, "fecha": fecha_mov, "descripcion": desc_mov})
-                        st.cache_data.clear()
-                        st.rerun()
-            with tab_tareas:
-                tareas_exp = tareas_df[tareas_df['expediente_numero'] == exp_numero].sort_values(by=['completada', 'fecha_vencimiento'])
-                for _, t in tareas_exp.iterrows():
-                    estado_actual = bool(t['completada'])
-                    nuevo_estado = st.checkbox(f"{t['descripcion']} (Vence: {t['fecha_vencimiento'].strftime('%d/%m/%Y')})", value=estado_actual, key=f"chk_{t['id']}", disabled=estado_actual)
-                    if nuevo_estado != estado_actual:
-                        db_manager.update_tarea_status(t['id'], nuevo_estado)
-                        st.cache_data.clear()
-                        st.rerun()
-                with st.form(key=f"form_tarea_{exp_numero}", clear_on_submit=True):
-                    nueva_desc = st.text_input("Nueva Tarea")
-                    c1, c2 = st.columns(2)
-                    nueva_fecha = c1.date_input("Vencimiento", min_value=date.today())
-                    nueva_prioridad = c2.selectbox("Prioridad", ["Alta", "Media", "Baja"])
-                    if st.form_submit_button("Guardar Tarea"):
-                        db_manager.add_item('tareas', {"expediente_numero": exp_numero, "descripcion": nueva_desc, "fecha_vencimiento": nueva_fecha, "prioridad": nueva_prioridad.lower()})
-                        st.cache_data.clear()
-                        st.rerun()
-            with tab_notas:
-                notas_exp = notas_df[notas_df['expediente_numero'] == exp_numero].sort_values(by='fecha_creacion', ascending=False)
-                for _, n in notas_exp.iterrows():
-                    with st.container(border=True):
-                        st.markdown(n['contenido'])
-                        st.caption(f"Añadida el {n['fecha_creacion'].strftime('%d/%m/%Y %H:%M')}")
-                with st.form(key=f"form_nota_{exp_numero}", clear_on_submit=True):
-                    nuevo_contenido = st.text_area("Nueva Nota:")
-                    if st.form_submit_button("Guardar Nota"):
-                        db_manager.add_item('notas', {"expediente_numero": exp_numero, "contenido": nuevo_contenido, "fecha_creacion": datetime.now()})
-                        st.cache_data.clear()
-                        st.rerun()
-
-# (El resto de las secciones no tienen cambios)
-elif opcion_menu == "🗓️ Agenda":
-    st.title("🗓️ Agenda de Vencimientos")
-    tareas_pendientes = tareas_df[~tareas_df['completada']].sort_values(by='fecha_vencimiento')
-    if tareas_pendientes.empty: st.success("¡No hay tareas pendientes! 🎉")
-    else:
-        for _, t in tareas_pendientes.iterrows():
-            dias_restantes = (t['fecha_vencimiento'] - date.today()).days
-            color = "red" if dias_restantes < 3 else "orange" if dias_restantes < 7 else "blue"
-            with st.container(border=True):
-                st.markdown(f"##### :{color}[{t['descripcion']}]")
-                exp_asociado_df = expedientes_df[expedientes_df['numero'] == t['expediente_numero']]
-                if not exp_asociado_df.empty:
-                    exp_asociado = exp_asociado_df.iloc[0]
-                    st.markdown(f"**Expediente:** {format_caratula(exp_asociado['caratula'])}")
+class DatabaseManager:
+    # ... (toda la clase DatabaseManager sin cambios)
+    def __init__(self, engine):
+        self.engine = engine
+    def sync_expedientes(self, df):
+        with self.engine.connect() as conn:
+            for _, row in df.iterrows():
+                stmt = db.text("SELECT * FROM expedientes WHERE numero = :numero")
+                if conn.execute(stmt, {"numero": row['Numero']}).fetchone():
+                    update_stmt = db.text("UPDATE expedientes SET caratula=:c, estado=:e, ultima_novedad_portal=:un, fecha_novedad_portal=:fn, link_portal=:lp WHERE numero=:n")
+                    conn.execute(update_stmt, {"c": row['Caratula'], "e": row['Estado'], "un": row['Última Novedad'], "fn": row['Fecha Novedad'], "lp": row['Link'], "n": row['Numero']})
                 else:
-                    st.markdown(f"**Expediente:** {t['expediente_numero']}")
-                st.markdown(f"**Vence:** {t['fecha_vencimiento'].strftime('%d/%m/%Y')} (**{dias_restantes} días restantes**)")
-elif opcion_menu == "📝 Notas":
-    st.title("📝 Resumen de Notas")
-    if notas_df.empty: st.info("Aún no has añadido ninguna nota.")
-    else:
-        notas_con_caratula = pd.merge(notas_df.sort_values(by='fecha_creacion', ascending=False), expedientes_df[['numero', 'caratula']], left_on='expediente_numero', right_on='numero', how='left')
-        for _, n in notas_con_caratula.iterrows():
-            with st.container(border=True):
-                st.markdown(f"**Nota en:** {format_caratula(n.get('caratula', n['expediente_numero']))}")
-                st.write(n['contenido'])
-                st.caption(f"Añadido el {n['fecha_creacion'].strftime('%d/%m/%Y %H:%M')}")
-elif opcion_menu == "🔍 Búsqueda":
-    st.title("🔍 Búsqueda General en Portal CAYT")
-    if 'driver' not in st.session_state or st.session_state.driver is None:
-        st.warning("⚠️ Para buscar, primero debe 'Sincronizar con Portal'.")
-    else:
-        query = st.text_input("Ingrese su búsqueda", key="search_query")
-        if st.button("Buscar en Portal"):
-            with st.spinner(f"Buscando '{query}'..."):
-                search_results = Scraper().search_on_portal(query)
-            if not search_results.empty:
-                st.dataframe(search_results, column_config={"Enlace": st.column_config.LinkColumn("Abrir", display_text="↗️")}, hide_index=True)
-            else:
-                st.info("No se encontraron resultados.")
-elif opcion_menu == "📄 Reportes":
-    st.title("📄 Generador de Informes")
-    if not expedientes_df.empty:
-        options = st.multiselect("Seleccione los expedientes para incluir en el reporte:", options=expedientes_df['numero'], format_func=lambda x: format_caratula(expedientes_df[expedientes_df['numero'] == x].iloc[0]['caratula']))
-        if st.button("Generar Reporte"):
-            if options:
-                reporte = generate_report(expedientes_df, tareas_df, notas_df, movimientos_df, options)
-                st.markdown(reporte)
-                st.download_button("Descargar Reporte (.md)", reporte, file_name="Reporte_Expedientes.md")
-            else:
-                st.warning("Debe seleccionar al menos un expediente.")
+                    insert_stmt = db.text("INSERT INTO expedientes (numero, caratula, estado, ultima_novedad_portal, fecha_novedad_portal, link_portal) VALUES (:n, :c, :e, :un, :fn, :lp)")
+                    conn.execute(insert_stmt, {"n": row['Numero'], "c": row['Caratula'], "e": row['Estado'], "un": row['Última Novedad'], "fn": row['Fecha Novedad'], "lp": row['Link']})
+            conn.commit()
+    def get_all_data(self):
+        with self.engine.connect() as conn:
+            expedientes = pd.read_sql_table('expedientes', conn, coerce_float=False)
+            tareas = pd.read_sql_table('tareas', conn, coerce_float=False)
+            notas = pd.read_sql_table('notas', conn, coerce_float=False)
+            movimientos = pd.read_sql_table('movimientos', conn, coerce_float=False)
+        if not tareas.empty:
+            tareas['fecha_vencimiento'] = pd.to_datetime(tareas['fecha_vencimiento'], errors='coerce').dt.date
+            if 'completada' in tareas.columns: tareas['completada'] = tareas['completada'].fillna(False).astype(bool)
+        if not notas.empty:
+            notas['fecha_creacion'] = pd.to_datetime(notas['fecha_creacion'], errors='coerce')
+        if not movimientos.empty:
+            movimientos['fecha'] = pd.to_datetime(movimientos['fecha'], errors='coerce').dt.date
+        return expedientes, tareas, notas, movimientos
+    def update_ficha_expediente(self, numero, data):
+        with self.engine.connect() as conn:
+            stmt = db.text("UPDATE expedientes SET juzgado_nombre=:jn, secretaria_nombre=:sn, medida_cautelar_status=:mcs, observaciones=:o WHERE numero=:n")
+            conn.execute(stmt, {"jn": data['juzgado_nombre'], "sn": data['secretaria_nombre'], "mcs": data['medida_cautelar_status'], "o": data['observaciones'], "n": numero})
+            conn.commit()
+    def add_item(self, table_name, data):
+        with self.engine.connect() as conn:
+            table = db.Table(table_name, db.MetaData(), autoload_with=self.engine)
+            stmt = db.insert(table).values(data)
+            conn.execute(stmt)
+            conn.commit()
+    def update_tarea_status(self, tarea_id, completada):
+        with self.engine.connect() as conn:
+            stmt = db.text("UPDATE tareas SET completada=:c WHERE id=:i")
+            conn.execute(stmt, {"c": completada, "i": tarea_id})
+            conn.commit()
+
+db_manager = DatabaseManager(engine)
