@@ -1,30 +1,31 @@
-# database.py - VERSIÓN FINAL CON CONEXIÓN A TURSO
+# database.py - VERSIÓN FINAL Y ROBUSTA
 import streamlit as st
 import sqlalchemy as db
 import pandas as pd
 from datetime import datetime
 
-# --- LÓGICA DE CONEXIÓN ---
-# Intenta conectarse a Turso (para producción/nube), si no, usa el archivo local (para desarrollo)
-try:
-    # Este código solo se ejecuta si los secretos de Turso están disponibles
-    url = st.secrets["TURSO_DATABASE_URL"]
-    token = st.secrets["TURSO_AUTH_TOKEN"]
-    # La URL de conexión para Turso con SQLAlchemy es un poco diferente
-    conn_url = f"sqlite+{url}/?authToken={token}&secure=true"
-    engine = db.create_engine(conn_url, connect_args={'check_same_thread': False}, echo=False)
-    # Guardamos en el estado de la sesión qué tipo de conexión tenemos
-    st.session_state['db_connection_type'] = "☁️ Turso Cloud"
-except Exception:
-    # Si falla (ej. corriendo localmente sin secretos), usa el archivo local
-    DB_FILE = "gestor_definitivo.db"
-    engine = db.create_engine(f'sqlite:///{DB_FILE}')
-    # Guardamos en el estado de la sesión que la conexión es local
-    st.session_state['db_connection_type'] = "💾 Local"
+def get_engine():
+    """
+    Determina si usar la DB de Turso (en la nube) o una local y devuelve el motor de conexión.
+    También establece el estado de la conexión en la sesión.
+    """
+    try:
+        url = st.secrets["TURSO_DATABASE_URL"]
+        token = st.secrets["TURSO_AUTH_TOKEN"]
+        conn_url = f"sqlite+{url}/?authToken={token}&secure=true"
+        engine = db.create_engine(conn_url, connect_args={'check_same_thread': False}, echo=False)
+        st.session_state['db_connection_type'] = "☁️ Turso Cloud"
+        return engine
+    except Exception:
+        DB_FILE = "gestor_definitivo.db"
+        engine = db.create_engine(f'sqlite:///{DB_FILE}')
+        st.session_state['db_connection_type'] = "💾 Local"
+        return engine
 
-# (El resto del archivo no cambia, es compatible con ambas bases de datos)
-def init_db():
+def init_db(engine):
+    """Crea las tablas en la base de datos si no existen."""
     metadata = db.MetaData()
+    # (El resto de esta función no cambia)
     if not engine.dialect.has_table(engine.connect(), "expedientes"):
         db.Table('expedientes', metadata,
             db.Column('numero', db.String, primary_key=True), db.Column('caratula', db.String),
@@ -52,6 +53,7 @@ def init_db():
         metadata.create_all(engine)
 
 class DatabaseManager:
+    # (El resto de la clase no cambia)
     def __init__(self, engine):
         self.engine = engine
     def sync_expedientes(self, df):
@@ -95,5 +97,3 @@ class DatabaseManager:
             stmt = db.text("UPDATE tareas SET completada=:c WHERE id=:i")
             conn.execute(stmt, {"c": completada, "i": tarea_id})
             conn.commit()
-
-db_manager = DatabaseManager(engine)
