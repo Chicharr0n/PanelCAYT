@@ -1,10 +1,28 @@
+# database.py - VERSIÓN FINAL CON CONEXIÓN A TURSO
+import streamlit as st
 import sqlalchemy as db
 import pandas as pd
 from datetime import datetime
 
-DB_FILE = "gestor_definitivo.db"
-engine = db.create_engine(f'sqlite:///{DB_FILE}')
+# --- LÓGICA DE CONEXIÓN ---
+# Intenta conectarse a Turso (para producción/nube), si no, usa el archivo local (para desarrollo)
+try:
+    # Este código solo se ejecuta si los secretos de Turso están disponibles
+    url = st.secrets["TURSO_DATABASE_URL"]
+    token = st.secrets["TURSO_AUTH_TOKEN"]
+    # La URL de conexión para Turso con SQLAlchemy es un poco diferente
+    conn_url = f"sqlite+{url}/?authToken={token}&secure=true"
+    engine = db.create_engine(conn_url, connect_args={'check_same_thread': False}, echo=False)
+    # Guardamos en el estado de la sesión qué tipo de conexión tenemos
+    st.session_state['db_connection_type'] = "☁️ Turso Cloud"
+except Exception:
+    # Si falla (ej. corriendo localmente sin secretos), usa el archivo local
+    DB_FILE = "gestor_definitivo.db"
+    engine = db.create_engine(f'sqlite:///{DB_FILE}')
+    # Guardamos en el estado de la sesión que la conexión es local
+    st.session_state['db_connection_type'] = "💾 Local"
 
+# (El resto del archivo no cambia, es compatible con ambas bases de datos)
 def init_db():
     metadata = db.MetaData()
     if not engine.dialect.has_table(engine.connect(), "expedientes"):
@@ -12,9 +30,8 @@ def init_db():
             db.Column('numero', db.String, primary_key=True), db.Column('caratula', db.String),
             db.Column('estado', db.String), db.Column('juzgado_nombre', db.String), 
             db.Column('secretaria_nombre', db.String), db.Column('medida_cautelar_status', db.String),
-            db.Column('observaciones', db.Text), # NUEVO
-            db.Column('ultima_novedad_portal', db.String), db.Column('fecha_novedad_portal', db.String),
-            db.Column('link_portal', db.String) # NUEVO
+            db.Column('observaciones', db.Text), db.Column('ultima_novedad_portal', db.String), 
+            db.Column('fecha_novedad_portal', db.String), db.Column('link_portal', db.String)
         )
         db.Table('movimientos', metadata,
             db.Column('id', db.Integer, primary_key=True, autoincrement=True),
@@ -37,7 +54,6 @@ def init_db():
 class DatabaseManager:
     def __init__(self, engine):
         self.engine = engine
-
     def sync_expedientes(self, df):
         with self.engine.connect() as conn:
             for _, row in df.iterrows():
@@ -49,7 +65,6 @@ class DatabaseManager:
                     insert_stmt = db.text("INSERT INTO expedientes (numero, caratula, estado, ultima_novedad_portal, fecha_novedad_portal, link_portal) VALUES (:n, :c, :e, :un, :fn, :lp)")
                     conn.execute(insert_stmt, {"n": row['Numero'], "c": row['Caratula'], "e": row['Estado'], "un": row['Última Novedad'], "fn": row['Fecha Novedad'], "lp": row['Link']})
             conn.commit()
-
     def get_all_data(self):
         with self.engine.connect() as conn:
             expedientes = pd.read_sql_table('expedientes', conn, coerce_float=False)
@@ -64,20 +79,17 @@ class DatabaseManager:
         if not movimientos.empty:
             movimientos['fecha'] = pd.to_datetime(movimientos['fecha'], errors='coerce').dt.date
         return expedientes, tareas, notas, movimientos
-
     def update_ficha_expediente(self, numero, data):
         with self.engine.connect() as conn:
             stmt = db.text("UPDATE expedientes SET juzgado_nombre=:jn, secretaria_nombre=:sn, medida_cautelar_status=:mcs, observaciones=:o WHERE numero=:n")
             conn.execute(stmt, {"jn": data['juzgado_nombre'], "sn": data['secretaria_nombre'], "mcs": data['medida_cautelar_status'], "o": data['observaciones'], "n": numero})
             conn.commit()
-
     def add_item(self, table_name, data):
         with self.engine.connect() as conn:
             table = db.Table(table_name, db.MetaData(), autoload_with=self.engine)
             stmt = db.insert(table).values(data)
             conn.execute(stmt)
             conn.commit()
-
     def update_tarea_status(self, tarea_id, completada):
         with self.engine.connect() as conn:
             stmt = db.text("UPDATE tareas SET completada=:c WHERE id=:i")
