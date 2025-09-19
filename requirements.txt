@@ -8,8 +8,8 @@ webdriver-manager==4.0.2
 beautifulsoup4==4.12.3
 
 # Database
-sqlalchemy==2.0.32
-sqlalchemy-libsql==0.2.2
+sqlalchemy
+sqlalchemy-libsql
 
 # Utils
 python-dotenv==1.0.1
