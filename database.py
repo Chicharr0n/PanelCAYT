@@ -10,20 +10,15 @@ def get_engine():
     También establece el estado de la conexión en la sesión.
     """
     try:
-        # Este código solo se ejecuta si los secretos de Turso están disponibles
         url = st.secrets["TURSO_DATABASE_URL"]
         token = st.secrets["TURSO_AUTH_TOKEN"]
-        # La URL de conexión para Turso con SQLAlchemy es un poco diferente
         conn_url = f"sqlite+{url}/?authToken={token}&secure=true"
         engine = db.create_engine(conn_url, connect_args={'check_same_thread': False}, echo=False)
-        # Guardamos en el estado de la sesión qué tipo de conexión tenemos
         st.session_state['db_connection_type'] = "☁️ Turso Cloud"
         return engine
     except Exception:
-        # Si falla (ej. corriendo localmente sin secretos), usa el archivo local
         DB_FILE = "gestor_definitivo.db"
         engine = db.create_engine(f'sqlite:///{DB_FILE}')
-        # Guardamos en el estado de la sesión que la conexión es local
         st.session_state['db_connection_type'] = "💾 Local"
         return engine
 
@@ -33,9 +28,9 @@ def init_db(engine):
     if not engine.dialect.has_table(engine.connect(), "expedientes"):
         db.Table('expedientes', metadata,
             db.Column('numero', db.String, primary_key=True), db.Column('caratula', db.String),
-            db.Column('estado', db.String), db.Column('juzgado_nombre', db.String), 
+            db.Column('estado', db.String), db.Column('juzgado_nombre', db.String),
             db.Column('secretaria_nombre', db.String), db.Column('medida_cautelar_status', db.String),
-            db.Column('observaciones', db.Text), db.Column('ultima_novedad_portal', db.String), 
+            db.Column('observaciones', db.Text), db.Column('ultima_novedad_portal', db.String),
             db.Column('fecha_novedad_portal', db.String), db.Column('link_portal', db.String)
         )
         db.Table('movimientos', metadata,
