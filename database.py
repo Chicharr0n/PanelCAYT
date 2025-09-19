@@ -3,20 +3,7 @@ import sqlalchemy as db
 import pandas as pd
 from datetime import datetime
 
-# --- LÓGICA DE CONEXIÓN (sin cambios) ---
-try:
-    url = st.secrets["TURSO_DATABASE_URL"]
-    token = st.secrets["TURSO_AUTH_TOKEN"]
-    conn_url = f"sqlite+{url}/?authToken={token}&secure=true"
-    engine = db.create_engine(conn_url, connect_args={'check_same_thread': False}, echo=False)
-    st.session_state['db_connection_type'] = "☁️ Turso Cloud"
-except Exception:
-    DB_FILE = "gestor_definitivo.db"
-    engine = db.create_engine(f'sqlite:///{DB_FILE}')
-    st.session_state['db_connection_type'] = "💾 Local"
-
-# --- ESTRUCTURA DE LA BASE DE DATOS (Mejora Puntos #1 y #4) ---
-# Definimos las tablas UNA SOLA VEZ para reutilizarlas
+# Estructura de la base de datos
 metadata = db.MetaData()
 
 expedientes_table = db.Table('expedientes', metadata,
@@ -46,9 +33,23 @@ notas_table = db.Table('notas', metadata,
     db.Column('contenido', db.Text, nullable=False), db.Column('fecha_creacion', db.DateTime, default=datetime.now)
 )
 
+def get_engine():
+    """Devuelve el motor de conexión a la base de datos (Turso Cloud o local)."""
+    try:
+        url = st.secrets["TURSO_DATABASE_URL"]
+        token = st.secrets["TURSO_AUTH_TOKEN"]
+        conn_url = f"sqlite+{url}/?authToken={token}&secure=true"
+        engine = db.create_engine(conn_url, connect_args={'check_same_thread': False}, echo=False)
+        st.session_state['db_connection_type'] = "☁️ Turso Cloud"
+        return engine
+    except Exception:
+        DB_FILE = "gestor_definitivo.db"
+        engine = db.create_engine(f'sqlite:///{DB_FILE}')
+        st.session_state['db_connection_type'] = "💾 Local"
+        return engine
+
 def init_db(engine):
     """Crea las tablas en la base de datos si no existen."""
-    # Usamos el inspector, como sugiere el Punto #1
     inspector = db.inspect(engine)
     if not inspector.has_table("expedientes"):
         metadata.create_all(engine)
@@ -60,11 +61,8 @@ class DatabaseManager:
     def sync_expedientes(self, df):
         with self.engine.connect() as conn:
             for _, row in df.iterrows():
-                # Comprobar si el expediente existe
                 stmt_select = db.select(expedientes_table).where(expedientes_table.c.numero == row['Numero'])
                 result = conn.execute(stmt_select).fetchone()
-                
-                # Usamos expresiones SQL en lugar de texto plano (Mejora Punto #3)
                 if result:
                     stmt_update = db.update(expedientes_table).where(expedientes_table.c.numero == row['Numero']).values(
                         caratula=row['Caratula'], estado=row['Estado'], ultima_novedad_portal=row['Última Novedad'],
@@ -78,10 +76,8 @@ class DatabaseManager:
                         link_portal=row['Link']
                     )
                     conn.execute(stmt_insert)
-            # El commit es manejado por el context manager (Mejora Punto #2)
 
     def get_all_data(self):
-        # (Esta función ya era eficiente, sin cambios)
         with self.engine.connect() as conn:
             expedientes = pd.read_sql_table('expedientes', conn, coerce_float=False)
             tareas = pd.read_sql_table('tareas', conn, coerce_float=False)
@@ -105,7 +101,6 @@ class DatabaseManager:
             conn.execute(stmt)
 
     def add_item(self, table_name, data):
-        # Mapeamos el nombre de la tabla al objeto de tabla predefinido (Mejora Punto #4)
         table_map = {
             'movimientos': movimientos_table,
             'tareas': tareas_table,
@@ -114,7 +109,6 @@ class DatabaseManager:
         table = table_map.get(table_name)
         if table is None:
             raise ValueError(f"Tabla desconocida: {table_name}")
-        
         with self.engine.connect() as conn:
             stmt = db.insert(table).values(data)
             conn.execute(stmt)
@@ -123,6 +117,3 @@ class DatabaseManager:
         with self.engine.connect() as conn:
             stmt = db.update(tareas_table).where(tareas_table.c.id == tarea_id).values(completada=completada)
             conn.execute(stmt)
-
-# Creamos la instancia global del gestor para que la app la pueda importar
-db_manager = DatabaseManager(engine)
