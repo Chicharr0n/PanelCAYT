@@ -3,30 +3,39 @@ import sqlalchemy as db
 import pandas as pd
 from datetime import datetime
 
+# ----------------------------------------------------------------------
+# Motor de base de datos (Turso primero, si falla usa SQLite local)
+# ----------------------------------------------------------------------
 def get_engine():
-    """
-    Usa Turso si hay secretos configurados, si no SQLite local.
-    """
     try:
         url = st.secrets["TURSO_DATABASE_URL"]
         token = st.secrets["TURSO_AUTH_TOKEN"]
 
-        conn_url = f"sqlite+{url}/?authToken={token}&secure=true"
-        engine = db.create_engine(
-            conn_url,
-            connect_args={'check_same_thread': False},
-            echo=False
-        )
-        st.session_state['db_connection_type'] = "☁️ Turso Cloud"
-        return engine
+        # Intentar con sqlalchemy-libsql
+        try:
+            conn_url = f"sqlite+libsql:///?authToken={token}&url={url}"
+            engine = db.create_engine(conn_url, echo=False)
+            st.session_state['db_connection_type'] = "☁️ Turso Cloud (libsql)"
+            return engine
+        except Exception:
+            # Fallback a libsql-experimental
+            conn_url = f"libsql://{url}?authToken={token}"
+            engine = db.create_engine(conn_url, echo=False)
+            st.session_state['db_connection_type'] = "☁️ Turso Cloud (experimental)"
+            return engine
+
     except Exception:
+        # Fallback final a SQLite local
         DB_FILE = "gestor_definitivo.db"
-        engine = db.create_engine(f'sqlite:///{DB_FILE}')
+        engine = db.create_engine(f"sqlite:///{DB_FILE}")
         st.session_state['db_connection_type'] = "💾 Local"
         return engine
 
+
+# ----------------------------------------------------------------------
+# Inicialización de tablas
+# ----------------------------------------------------------------------
 def init_db(engine):
-    """Crea tablas si no existen."""
     metadata = db.MetaData()
     if not engine.dialect.has_table(engine.connect(), "expedientes"):
         db.Table('expedientes', metadata,
@@ -63,6 +72,10 @@ def init_db(engine):
         )
         metadata.create_all(engine)
 
+
+# ----------------------------------------------------------------------
+# Gestor de base de datos
+# ----------------------------------------------------------------------
 class DatabaseManager:
     def __init__(self, engine):
         self.engine = engine
@@ -110,7 +123,10 @@ class DatabaseManager:
             conn.execute(stmt, {"c": completada, "i": tarea_id})
             conn.commit()
 
-# ⚡ Crear e inicializar engine + db_manager global
+
+# ----------------------------------------------------------------------
+# Instancia global de db_manager
+# ----------------------------------------------------------------------
 _engine = get_engine()
 init_db(_engine)
 db_manager = DatabaseManager(_engine)
